@@ -1,0 +1,28 @@
+continuous-goodies
+==================
+
+Various scripts and whatnot for CI and CD on upstream projects and Fedora
+Linux (probably also other distributions in that universe).  This is meant
+as a toybox and you copy what you want in to different projects.
+
+TOUR
+
+* release.sh
+
+      Given a project on Github and built with meson, give the ability to
+      increment the minor version number, tag (signed), push, and create
+      a release on Github.  The release tarball and detached signature are
+      uploaded to this release entry too.  All steps are optional and
+      controlled by command line arguments.
+
+* srpm.sh
+
+      Given a project that is set up to build in Copr[1], short-circuit
+      the process to locally generate an SRPM file that Copr would use.
+      Useful to locally test in mock before pushing to Copr.
+
+* dotcopr-Makefile
+
+      A .copr/Makefile template for projects on Github and carry a spec
+      file template in the project.  Read the Makefile to see the variables
+      it tries to replace in the template to generate a spec file.
