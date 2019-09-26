@@ -36,3 +36,6 @@ TOUR
 
           Determine whether or not to use yum or dnf then use the correct
           one to install git.  Called by the srpm target in the Makefile.
+
+----------
+[1] https://copr.fedorainfracloud.org/
