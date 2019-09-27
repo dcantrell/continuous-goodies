@@ -32,10 +32,11 @@ TOUR
           the variables it tries to replace in the template to generate
           a spec file.
 
-      installate-package.sh
+      instpkgs.sh
 
           Determine whether or not to use yum or dnf then use the correct
-          one to install git.  Called by the srpm target in the Makefile.
+          one to install git and the BuildRequires listed in the spec
+          file.  Called by the srpm target in the Makefile.
 
 ----------
 [1] https://copr.fedorainfracloud.org/
