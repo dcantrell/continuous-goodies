@@ -5,7 +5,9 @@ Various scripts and whatnot for CI and CD on upstream projects and Fedora
 Linux (probably also other distributions in that universe).  This is meant
 as a toybox and you copy what you want in to different projects.
 
+
 TOUR
+----
 
 * release.sh
 
@@ -15,11 +17,19 @@ TOUR
       uploaded to this release entry too.  All steps are optional and
       controlled by command line arguments.
 
+      Requirements:  - Project hosted on github
+                     - meson.build file, so using meson to build
+                     - Version number in an x.y style using ints
+                     - GPG key set up
+                     - GitHub access token in ~/.githubtoken
+
 * srpm.sh
 
       Given a project that is set up to build in Copr[1], short-circuit
       the process to locally generate an SRPM file that Copr would use.
       Useful to locally test in mock before pushing to Copr.
+
+      Requirements:  - Project using Copr, preferable with dotcopr/
 
 * dotcopr/
 
@@ -32,11 +42,18 @@ TOUR
           the variables it tries to replace in the template to generate
           a spec file.
 
+          Requirements:  - Project using git
+                         - RPM spec template as PROJECT.spec.in
+                         - The instpkgs.sh script below
+
       instpkgs.sh
 
           Determine whether or not to use yum or dnf then use the correct
           one to install git and the BuildRequires listed in the spec
           file.  Called by the srpm target in the Makefile.
+
+          Requirements:  - RPM spec template as PROJECT.spec.in
+
 
 ----------
 [1] https://copr.fedorainfracloud.org/
