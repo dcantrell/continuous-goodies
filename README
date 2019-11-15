@@ -5,31 +5,78 @@ Various scripts and whatnot for CI and CD on upstream projects and Fedora
 Linux (probably also other distributions in that universe).  This is meant
 as a toybox and you copy what you want in to different projects.
 
+An example project using these files is rpminspect:
+
+    https://github.com/rpminspect/rpminspect/
+
 
 TOUR
 ----
 
-* release.sh
+* utils/
 
-      Given a project on Github and built with meson, give the ability to
-      increment the minor version number, tag (signed), push, and create
-      a release on Github.  The release tarball and detached signature are
-      uploaded to this release entry too.  All steps are optional and
-      controlled by command line arguments.
+      Scripts that help with CI and CD work on Fedora projects.
 
-      Requirements:  - Project hosted on github
-                     - meson.build file, so using meson to build
-                     - Version number in an x.y style using ints
-                     - GPG key set up
-                     - GitHub access token in ~/.githubtoken
+      * release.sh
 
-* srpm.sh
+            Given a project on Github and built with meson, give the ability
+            to increment the minor version number, tag (signed), push, and
+            create a release on Github.  The release tarball and detached
+            signature are uploaded to this release entry too.  All steps are
+            optional and controlled by command line arguments.
 
-      Given a project that is set up to build in Copr[1], short-circuit
-      the process to locally generate an SRPM file that Copr would use.
-      Useful to locally test in mock before pushing to Copr.
+            Requirements:  - Project hosted on github
+                           - meson.build file, so using meson to build
+                           - Version number in an x.y style using ints
+                           - GPG key set up
+                           - GitHub access token in ~/.githubtoken
 
-      Requirements:  - Project using Copr, preferable with dotcopr/
+      * srpm.sh
+
+            Given a project that is set up to build in Copr[1], short-circuit
+            the process to locally generate an SRPM file that Copr would use.
+            Useful to locally test in mock before pushing to Copr.
+
+            Requirements:  - Project using Copr, preferably with dotcopr/
+
+      * mkrpmchangelog.sh
+
+            Generates a file suitable for use as the %changelog section in
+            an RPM spec file.  The generated changelog goes to stdout and
+            should be saved to a file.  It is easiest to call this file
+            'changelog' and then make it be a Source file in the spec file.
+            Then at the end of the spec file, do:
+
+                %changelog
+                %include %{SOURCE1}
+
+            Assuming you made it Source1.  By default the script will generate
+            a changelog block from the previous tag to the current tag.  But
+            if you pass --copr it will generate a simple changelog suitable
+            for builds in Copr.
+
+            This script is called by srpm.sh as well.
+
+      * submit-koji-builds.sh
+
+            Automatically build Fedora packages on specified branches in
+            dist-git.  This is called by the for-meson/Makefile when you do
+            "make koji".  The first argument is the tarball which represents
+            the new release.  The second argument is the project name.  The
+            project should also have a spec file template that generates in
+            the release process.  This script also assumes you are using the
+            mkrpmchangelog.sh method.
+
+            Requirements:  - Fedora account for building (member of packagers)
+                           - FEDORAPROJECT.ORG krb5 ticket
+                           - fedpkg and git installed
+
+            The calling environment should set BRANCHES to the names of the
+            dist-git branches to build on.  By default this is just 'master'.
+
+* for-meson/
+
+      Things to help meson projects present a more common build interface.
 
 * dotcopr/
 

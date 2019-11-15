@@ -52,7 +52,8 @@ endif
 		--format=tar \
 		--output='$(topdir)/$(TARBALL_BASENAME).tar' \
 		--prefix='$(TARBALL_BASENAME)/' HEAD $(topdir)
-	xz -9 $(topdir)/$(TARBALL_BASENAME).tar
+	xz -9f $(topdir)/$(TARBALL_BASENAME).tar
+	cd $(topdir) ; $(topdir)/utils/mkrpmchangelog.sh --copr > changelog
 	rpmbuild \
 		-bs --nodeps \
 		--define "_sourcedir $(topdir)" \
