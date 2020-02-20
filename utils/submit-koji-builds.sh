@@ -2,7 +2,7 @@
 #
 # Build new releases in Koji
 #
-# Copyright (C) 2019 David Cantrell <david.l.cantrell@gmail.com>
+# Copyright (C) 2019-2020 David Cantrell <david.l.cantrell@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 #     $1    Path to the release tarball to build
 #     $2    The name of the project in dist-git
 
-PATH=/usr/bin
+PATH=/bin:/usr/bin
 CWD="$(pwd)"
 WRKDIR="$(mktemp -d)"
 
