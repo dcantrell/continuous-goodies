@@ -24,17 +24,12 @@ PATH=/bin:/usr/bin
 CWD="$(pwd)"
 CURL="curl -L --progress-bar"
 PROG="$(basename $0)"
-
-# Github settings
 PROJECT="$(basename $(realpath ${CWD}))"
-GH_API="https://api.github.com"
-GH_REPO="${GH_API}/repos/${PROJECT}/${PROJECT}"
 
 # Command line options
 OPT_BUMPVER=
 OPT_TAG=
 OPT_PUSH=
-OPT_GITHUB=
 
 usage() {
     echo "Create a release for ${PROJECT}"
@@ -43,9 +38,7 @@ usage() {
     echo "    -b, --bumpver      Increment the minor version number"
     echo "    -t, --tag          Tag the release in git"
     echo "    -p, --push         Push the release and release tag"
-    echo "    -g, --github       Create github release entry and upload"
-    echo "                       artifacts"
-    echo "    -A, --all          Same as '-b -t -p -g'"
+    echo "    -A, --all          Same as '-b -t -p'"
     echo "    -h, --help         Display usage"
     echo "The options control behavior on the repo and upstream."
     echo
@@ -59,13 +52,10 @@ usage() {
     echo
     echo "The push option pushes the version increment commit and release"
     echo "tag to the upstream git repo."
-    echo
-    echo "The github option generates a new github release entry and uploads"
-    echo "the dist artifacts there."
 }
 
 # Handle command line options
-OPTS=$(getopt -o 'btpgAh' --long 'bumpver,tag,push,github,all,help' -n "${PROG}" -- "$@")
+OPTS=$(getopt -o 'btpAh' --long 'bumpver,tag,push,all,help' -n "${PROG}" -- "$@")
 
 if [ $? -ne 0 ]; then
     echo "Terminating..." >&2
@@ -87,10 +77,6 @@ while true ; do
             ;;
         '-p'|'--push')
             OPT_PUSH=y
-            shift
-            ;;
-        '-g'|'--github')
-            OPT_GITHUB=y
             shift
             ;;
         '-A'|'--all')
@@ -131,13 +117,6 @@ fi
 if [ ! -z "$(git status --porcelain)" ]; then
     echo "*** git index is not clean:" >&2
     git status --porcelain | sed -e 's|^|*** |g' >&2
-    exit 1
-fi
-
-# Collect the Github project owner (not necessarily the same as project name)
-OWNER="$(grep "git@github.com" .git/config | cut -d ':' -f 2 | cut -d '/' -f 1)"
-if [ -z "${OWNER}" ]; then
-    echo "*** Unable to determine Github project owner." >&2
     exit 1
 fi
 
@@ -186,54 +165,6 @@ sed -i -e "s|%%TARBALL%%|${PROJECT}-${VERSION}.tar.xz|g" build/meson-dist/${PROJ
 if [ "${OPT_PUSH}" = "y" ]; then
     git push
     git push --tags
-fi
-
-# Create a github release entry
-if [ "${OPT_GITHUB}" = "y" ]; then
-    TAG="$(git tag -l | tail -n 1)"
-    OLDTAG="$(git tag -l | tail -n 2 | head -n 1)"
-
-    # Get github access token
-    TOKEN="$(cat ${HOME}/.githubtoken 2>/dev/null)"
-    if [ -z "${TOKEN}" ]; then
-        echo "*** Missing github access token from ${HOME}/.githubtoken" >&2
-        exit 1
-    fi
-
-    # More Github settings
-    GH_TAGS="${GH_REPO}/releases/tags/${TAG}"
-    GH_AUTH="Authorization: token ${TOKEN}"
-
-    # Validate Github token
-    ${CURL} -o /dev/null -sH "${GH_AUTH}" "${GH_REPO}"
-    if [ $? -ne 0 ]; then
-        echo "*** Invalid Github token, repo, or a network issue" >&2
-        exit 1
-    fi
-
-    # Create new release on github
-    BODY="$(git log --format="%s" ${OLDTAG}.. | sed -e 's|^|* |g')"
-    API_JSON="{\"tag_name\": \"${TAG}\", \"target_commitish\": \"master\", \"name\": \"${PROJECT}-${VERSION}\", \"body\": \"${PROJECT}-${VERSION}\", \"draft\": false, \"prerelease\": false}"
-    RELEASE_INFO="$(mktemp)"
-    ${CURL} -o "${RELEASE_INFO}" --data "${API_JSON}" https://api.github.com/repos/${OWNER}/${PROJECT}/releases?access_token=${TOKEN}
-
-    # Get the ID of the asset
-    ASSET_ID="$(grep -m 1 "id.:" ${RELEASE_INFO} | grep -w id | tr : = | tr -cd '[[:alnum:]]=' | cut -d '=' -f 2)"
-    if [ -z "${ASSET_ID}" ]; then
-        echo "*** Unable to get the asset ID" >&2
-        cat ${RELEASE_INFO}
-        rm -f ${RELEASE_INFO}
-        exit 1
-    fi
-    rm -f ${RELEASE_INFO}
-
-    # Upload the assets
-    cd build/meson-dist
-    for asset in ${PROJECT}-${VERSION}.tar.xz ${PROJECT}-${VERSION}.tar.xz.asc ; do
-        GH_ASSET="https://uploads.github.com/repos/${OWNER}/${PROJECT}/releases/${ASSET_ID}/assets?name=${asset}"
-        ${CURL} -H "${GH_AUTH}" --data-binary @"${asset}" -H "Content-Type: application/octet-stream" ${GH_ASSET}
-    done
-    cd ${CWD}
 fi
 
 echo
