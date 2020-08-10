@@ -22,7 +22,7 @@
 #     $1    Path to the release tarball to build
 #     $2    The name of the project in dist-git
 
-PATH=/bin:/usr/bin
+PATH=/usr/bin
 CWD="$(pwd)"
 WRKDIR="$(mktemp -d)"
 
@@ -39,7 +39,7 @@ if [ -z "${BRANCHES}" ]; then
 fi
 
 cleanup() {
-    rm -rf ${WRKDIR}
+    rm -rf "${WRKDIR}"
 }
 
 trap cleanup EXIT
@@ -59,16 +59,15 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
-TARBALL="$(realpath $1)"
+TARBALL="$(realpath "$1")"
 
-if [ ! -f ${TARBALL} ]; then
-    echo "*** $(basename ${TARBALL}) does not exist" >&2
+if [ ! -f "${TARBALL}" ]; then
+    echo "*** $(basename "${TARBALL}") does not exist" >&2
     exit 1
 fi
 
-tar tf ${TARBALL} >/dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo "*** $(basename ${TARBALL}) is not a tar archive" >&2
+if tar tf "${TARBALL}" >/dev/null 2>&1 ; then
+    echo "*** $(basename "${TARBALL}") is not a tar archive" >&2
     exit 1
 fi
 
@@ -96,39 +95,57 @@ if [ $? -eq 1 ]; then
     exit 1
 fi
 
-cd ${CWD}
-${CWD}/utils/mkrpmchangelog.sh > ${WRKDIR}/newchangelog
+GIT_USERNAME="$(git config user.name)"
+GIT_USEREMAIL="$(git config user.email)"
 
-cd ${WRKDIR}
-${VENDORPKG} co ${PROJECT}
-cd ${PROJECT}
+cd "${CWD}" || exit
+"${CWD}"/utils/mkrpmchangelog.sh > "${WRKDIR}"/newchangelog
+
+cd "${WRKDIR}" || exit
+${VENDORPKG} co "${PROJECT}"
+cd "${PROJECT}" || exit
 
 for branch in ${BRANCHES} ; do
     git clean -d -x -f
+    git config user.name "${GIT_USERNAME}"
+    git config user.email "${GIT_USEREMAIL}"
 
     # make sure we are on the right branch
     ${VENDORPKG} switch-branch ${branch}
 
     # add the new source archive
-    ${VENDORPKG} new-sources ${TARBALL}
+    ${VENDORPKG} new-sources "${TARBALL}"
+
+    # extract any changelog entries that appeared in the spec file
+    sed -n '/^%changelog/,/^%include\ \%{SOURCE1}/p' rpminspect.spec | \
+        grep -vE '^(%changelog|%include)' | \
+        sed -e :a -e '/./,$!d;/^\n*$/{$d;N;};/\n$/ba' > cl
+    [ -s cl ] || rm -f cl
 
     # update the rolling %changelog in dist-git
     if [ -f changelog ]; then
-        mv changelog cl
-        cp ${WRKDIR}/newchangelog changelog
+        if [ -f cl ]; then
+            echo >> changelog
+            cat changelog >> cl
+            rm -f cl
+        else
+            mv changelog cl
+        fi
+
+        cp "${WRKDIR}"/newchangelog changelog
         echo >> changelog
         cat cl >> changelog
         rm -f cl
     else
-        cp ${WRKDIR}/newchangelog changelog
+        cp "${WRKDIR}"/newchangelog changelog
     fi
 
     # copy in the new spec file
-    cat ${CWD}/${PROJECT}.spec > ${PROJECT}.spec
+    cat "${CWD}"/"${PROJECT}".spec > "${PROJECT}".spec
 
     # commit changes
-    git add sources changelog ${PROJECT}.spec
-    ${VENDORPKG} ci -c -p
+    git add sources changelog "${PROJECT}".spec
+    ${VENDORPKG} ci -c -p -s
     git clean -d -x -f
 
     # build
